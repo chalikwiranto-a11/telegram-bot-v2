@@ -40,21 +40,20 @@ def webhook():
 
             # Request ke Google Apps Script
             try:
-                res = requests.get(
-                    f"{SHEET_API}?serial={serial}",
-                    timeout=60
-                )
+res = requests.get(
+    f"{SHEET_API}?serial={serial}",
+    timeout=30
+)
+
+res.raise_for_status()
                 logging.info("STATUS CODE: %s", res.status_code)
 
                 data = res.json()
 
-            except Exception as e:
-                logging.error("ERROR REQUEST SHEET: %s", str(e))
-                bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text="⚠️ Gagal konek ke database."
-                )
-                return "ok"
+except Exception:
+    reply = "⚠️ Database sedang lambat, coba lagi."
+    bot.send_message(chat_id=update.message.chat_id, text=reply)
+    return "ok"
 
             # Format balasan
             if data.get("found"):
@@ -87,4 +86,5 @@ Row       : {data.get('row','-')}
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
+
 
