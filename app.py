@@ -42,7 +42,7 @@ def webhook():
             try:
                 res = requests.get(
                     f"{SHEET_API}?serial={serial}",
-                    timeout=15
+                    timeout=60
                 )
                 logging.info("STATUS CODE: %s", res.status_code)
 
@@ -87,3 +87,4 @@ Row       : {data.get('row','-')}
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
+
