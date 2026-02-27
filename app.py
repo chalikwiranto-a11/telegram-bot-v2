@@ -42,11 +42,12 @@ def webhook():
             # REQUEST KE GOOGLE SHEETS
             # =========================
             try:
-                res = requests.get(
-                    f"{SHEET_API}?serial={serial}",
-                    timeout=30
-                )
-
+res = requests.get(
+    SHEET_API,
+    params={"serial": serial},
+    timeout=30,
+    allow_redirects=True
+)
                 logging.info("STATUS CODE: %s", res.status_code)
 
                 data = res.json()
@@ -93,3 +94,4 @@ Row       : {data.get('row','-')}
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
+
