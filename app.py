@@ -38,24 +38,31 @@ def webhook():
         if update.message and update.message.text:
             serial = update.message.text.strip().upper()
 
-            # Request ke Google Apps Script
+            # =========================
+            # REQUEST KE GOOGLE SHEETS
+            # =========================
             try:
-res = requests.get(
-    f"{SHEET_API}?serial={serial}",
-    timeout=30
-)
+                res = requests.get(
+                    f"{SHEET_API}?serial={serial}",
+                    timeout=30
+                )
 
-res.raise_for_status()
                 logging.info("STATUS CODE: %s", res.status_code)
 
                 data = res.json()
 
-except Exception:
-    reply = "⚠️ Database sedang lambat, coba lagi."
-    bot.send_message(chat_id=update.message.chat_id, text=reply)
-    return "ok"
+            except Exception as e:
+                logging.error("ERROR REQUEST SHEET: %s", str(e))
 
-            # Format balasan
+                bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text="⚠️ Gagal konek ke database."
+                )
+                return "ok"
+
+            # =========================
+            # FORMAT BALASAN
+            # =========================
             if data.get("found"):
                 reply = f"""
 🔎 DATA MATERIAL
@@ -86,5 +93,3 @@ Row       : {data.get('row','-')}
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
-
-
