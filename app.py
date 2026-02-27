@@ -1,16 +1,24 @@
 from flask import Flask, request
 import requests
 import os
-import telegram
 import logging
+from telegram import Bot, Update
 
-# Logging agar error terlihat di Railway
+# Logging
 logging.basicConfig(level=logging.INFO)
 
+# Ambil environment variable
 TOKEN = os.environ.get("TOKEN")
 SHEET_API = os.environ.get("SHEET_API")
 
-bot = telegram.Bot(token=TOKEN)
+# Pastikan TOKEN dan SHEET_API ada
+if not TOKEN:
+    raise Exception("TOKEN tidak ditemukan di environment variables")
+
+if not SHEET_API:
+    raise Exception("SHEET_API tidak ditemukan di environment variables")
+
+bot = Bot(token=TOKEN)
 app = Flask(__name__)
 
 @app.route("/")
@@ -20,37 +28,45 @@ def home():
 @app.route("/", methods=["POST"])
 def webhook():
     try:
-        data_json = request.get_json(force=True)
+        data_json = request.get_json()
 
         if not data_json:
             return "ok"
 
-        update = telegram.Update.de_json(data_json, bot)
+        update = Update.de_json(data_json, bot)
 
         if update.message and update.message.text:
             serial = update.message.text.strip().upper()
 
             # Request ke Google Apps Script
-            res = requests.get(
-                f"{SHEET_API}?serial={serial}",
-                timeout=15
-            )
+            try:
+                res = requests.get(
+                    f"{SHEET_API}?serial={serial}",
+                    timeout=15
+                )
+                logging.info("STATUS CODE: %s", res.status_code)
 
-            logging.info("STATUS CODE: %s", res.status_code)
-            logging.info("RESPONSE TEXT: %s", res.text)
+                data = res.json()
 
-            # Pastikan response valid JSON
-            data = res.json()
+            except Exception as e:
+                logging.error("ERROR REQUEST SHEET: %s", str(e))
+                bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text="⚠️ Gagal konek ke database."
+                )
+                return "ok"
 
+            # Format balasan
             if data.get("found"):
                 reply = f"""
 🔎 DATA MATERIAL
 
 Serial No : {data.get('serial','-')}
+Shipment  : {data.get('shipment','-')}
 Material  : {data.get('material','-')}
 Vendor    : {data.get('vendor','-')}
+Qty       : {data.get('qty','-')}
 Year      : {data.get('receive_year','-')}
-Stock     : {data.get('qty','-')}
 Location  : {data.get('location','-')}
 Row       : {data.get('row','-')}
 """
@@ -63,12 +79,11 @@ Row       : {data.get('row','-')}
             )
 
     except Exception as e:
-        logging.error("ERROR: %s", str(e))
+        logging.error("GENERAL ERROR: %s", str(e))
 
     return "ok"
 
 
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
