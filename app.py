@@ -13,28 +13,40 @@ app = Flask(__name__)
 def home():
     return "Bot is running"
 
-@app.route(f"/{TOKEN}", methods=["POST"])
+@app.route("/", methods=["POST"])
 def webhook():
-    update = telegram.Update.de_json(request.get_json(force=True), bot)
+    data_json = request.get_json()
 
-    if update.message:
+    if not data_json:
+        return "ok"
+
+    update = telegram.Update.de_json(data_json, bot)
+
+    if update.message and update.message.text:
         serial = update.message.text.strip().upper()
 
-        res = requests.get(f"{SHEET_API}?serial={serial}")
-        data = res.json()
+        try:
+            res = requests.get(f"{SHEET_API}?serial={serial}")
+            data = res.json()
+        except:
+            bot.send_message(
+                chat_id=update.message.chat_id,
+                text="⚠️ Error koneksi ke database."
+            )
+            return "ok"
 
         if data.get("found"):
             reply = f"""
 🔎 DATA MATERIAL
 
 Serial No : {data['serial']}
-Material  : {data['material']}
-Vendor    : {data['vendor']}
-Year      : {data['year']}
-Identy    : {data['identy']}
-Stock     : {data['stock']}
-Location  : {data['location']}
-Row       : {data['row']}
+Material  : {data.get('material','-')}
+Vendor    : {data.get('vendor','-')}
+Year      : {data.get('year','-')}
+Identy    : {data.get('identy','-')}
+Stock     : {data.get('stock','-')}
+Location  : {data.get('location','-')}
+Row       : {data.get('row','-')}
 """
         else:
             reply = "❌ Serial tidak ditemukan"
@@ -42,3 +54,6 @@ Row       : {data['row']}
         bot.send_message(chat_id=update.message.chat_id, text=reply)
 
     return "ok"
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000)
